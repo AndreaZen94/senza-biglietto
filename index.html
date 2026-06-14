@@ -450,28 +450,20 @@ async function loadPeerJS(){
    4) Incolla qui sotto NOME (senza .metered.live) e la API key.
    Lascia vuoto per usare il relay pubblico (meno affidabile).
    ============================================================ */
-const TURN_CONFIG={ meteredApp:'espansionedeldominio', meteredApiKey:'gYmZVBTK4DLDJp-5hIuYhE5K8M7MaPxKvPznpbWBIMHiknaR' };
-
-// Fallback pubblico (STUN Google + relay openrelay) usato se TURN_CONFIG è vuoto.
+// Credenziali TURN dedicate (Metered "espansionedeldominio"). username/credential
+// sono sicuri da tenere nel front-end; la SECRET KEY NON va mai messa qui.
+const TURN_USER='d9fe48b5464fd9b358236366';
+const TURN_PASS='aBlmkyHeN6eglDyZ';
 let RTC_CFG={iceServers:[
-  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},
-  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp','turns:openrelay.metered.ca:443?transport=tcp'],
+  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun.relay.metered.ca:80']},
+  {urls:['turn:global.relay.metered.ca:80','turn:global.relay.metered.ca:80?transport=tcp','turn:global.relay.metered.ca:443','turns:global.relay.metered.ca:443?transport=tcp'],
+   username:TURN_USER,credential:TURN_PASS},
+  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turns:openrelay.metered.ca:443?transport=tcp'],
    username:'openrelayproject',credential:'openrelayproject'}
 ]};
-let icePrepared=false, icePrep=null;
-function prepareIce(){
-  if(icePrep)return icePrep;
-  if(!TURN_CONFIG.meteredApiKey||!TURN_CONFIG.meteredApp){icePrepared=true;return Promise.resolve();}
-  icePrep=fetch(`https://${TURN_CONFIG.meteredApp}.metered.live/api/v1/turn/credentials?apiKey=${TURN_CONFIG.meteredApiKey}`)
-    .then(r=>r.json())
-    .then(list=>{
-      if(Array.isArray(list)&&list.length)
-        RTC_CFG={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},...list]};
-      icePrepared=true;
-    })
-    .catch(()=>{icePrepared=true;}); // in caso di errore resta il fallback
-  return icePrep;
-}
+let icePrepared=true, icePrep=null;
+function prepareIce(){return Promise.resolve();} // credenziali già incluse, niente fetch
+
 function mkPeer(id){
   const p=id?new Peer(id,{config:RTC_CFG}):new Peer({config:RTC_CFG});
   p.on('disconnected',()=>{try{if(!p.destroyed)p.reconnect();}catch(e){}});
