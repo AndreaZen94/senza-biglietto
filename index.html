@@ -40,6 +40,9 @@ main{display:flex;flex-direction:column;align-items:center;padding:10px}
 .countBtns{display:flex;gap:8px}
 .countBtns button{background:var(--panel2);border:1px solid #3c4d61;font-size:18px;font-weight:800;padding:10px 20px}
 .countBtns button.on{background:var(--amber);color:#241a05;border-color:var(--amber)}
+.aiBtn{flex:0 0 auto;background:var(--panel2);border:1px solid #3c4d61;border-radius:10px;color:var(--ink);
+  font-size:13px;font-weight:700;padding:8px 10px;white-space:nowrap}
+.aiBtn.cpu{background:var(--grn);color:#06281a;border-color:var(--grn)}
 #roomCodeLine{font-size:22px;font-weight:800}
 #roomCodeLine b{color:var(--amber);font-size:34px;letter-spacing:6px}
 #lobbyList{display:flex;flex-direction:column;gap:6px;background:var(--panel);border-radius:14px;padding:12px 22px;min-width:260px}
@@ -244,15 +247,19 @@ main{display:flex;flex-direction:column;align-items:center;padding:10px}
     <div class="setupRow" id="su1"><span class="pTagDot" style="background:var(--blue)"></span>
       <select id="emo1"><option>🥷</option><option>🤠</option><option>🤡</option><option>👻</option><option>🐸</option><option>💃</option><option>🦹</option><option>🧛</option></select>
       <input id="name1" maxlength="12" placeholder="Giocatore 2" value="Blu">
+      <button type="button" class="aiBtn" id="ai1" data-i="1">👤 Umano</button>
     </div>
     <div class="setupRow hide" id="su2"><span class="pTagDot" style="background:var(--grn)"></span>
       <select id="emo2"><option>🤡</option><option>🤠</option><option>🥷</option><option>👻</option><option>🐸</option><option>💃</option><option>🦹</option><option>🧛</option></select>
       <input id="name2" maxlength="12" placeholder="Giocatore 3" value="Verde">
+      <button type="button" class="aiBtn" id="ai2" data-i="2">👤 Umano</button>
     </div>
     <div class="setupRow hide" id="su3"><span class="pTagDot" style="background:var(--vio)"></span>
       <select id="emo3"><option>👻</option><option>🤠</option><option>🥷</option><option>🤡</option><option>🐸</option><option>💃</option><option>🦹</option><option>🧛</option></select>
       <input id="name3" maxlength="12" placeholder="Giocatore 4" value="Viola">
+      <button type="button" class="aiBtn" id="ai3" data-i="3">👤 Umano</button>
     </div>
+    <p class="note" style="max-width:440px">🤖 Tocca <b>Umano</b> per trasformare un avversario in <b>CPU</b> e giocare contro il computer.</p>
     <button class="bigbtn" id="btnStart">Si parte! 🚂</button>
     <button class="ghostbtn" id="btnSetupBack">← Menu</button>
   </section>
@@ -389,6 +396,7 @@ const G={
   n:2, rows:3, started:false,
   names:[...DEF_NAMES], emojis:[...DEF_EMOJI],
   scores:[0,0], manche:1, round:1, initiative:0, firstInit:0,
+  ai:[false,false,false,false],
   players:[], insp:{col:-4}, event:null,
   items:[], traps:[],
   programs:[], curProg:[], progIdx:0, pendKind:null,
@@ -1381,12 +1389,141 @@ async function showHandoff(pi){
   SYNTH.ui();
   $('#ovHandoff').classList.add('hide');
 }
+
+/* ================= CPU (intelligenza artificiale) ================= */
+function aiCellHazard(r,c){
+  if(r<0||r>=G.rows)return 'side';
+  if(c<0||c>=COLS)return 'end';
+  if(GAPS.includes(c))return 'gap';
+  if(G.insp.col>=0&&G.insp.col<COLS&&c===G.insp.col)return 'caught';
+  return null;
+}
+function aiOccupied(r,c,pi){
+  return G.players.some((q,qi)=>q&&!q.dead&&qi!==pi&&q.r===r&&q.c===c);
+}
+function aiOpponents(pi){
+  const out=[];
+  for(let i=0;i<G.n;i++){const q=G.players[i];if(q&&!q.dead&&i!==pi)out.push({qi:i,r:q.r,c:q.c});}
+  return out;
+}
+function aiNearest(me,opps){
+  let best=null,bd=1e9;
+  for(const o of opps){const d=Math.abs(o.r-me.r)+Math.abs(o.c-me.c);if(d<bd){bd=d;best=o;}}
+  return best;
+}
+// replica pushVictim: la vittima fa max 2 passi, fermandosi al primo pericolo → muore?
+function aiPushKills(o,d){
+  const [dr,dc]=DIRS[d];let r=o.r,c=o.c;
+  for(let s=0;s<2;s++){r+=dr;c+=dc;if(aiCellHazard(r,c))return true;}
+  return false;
+}
+function aiPushDir(me,opps){
+  for(const d of ['N','S','W','E']){
+    const [dr,dc]=DIRS[d];
+    const o=opps.find(o=>o.r===me.r+dr&&o.c===me.c+dc);
+    if(o&&aiPushKills(o,d))return d;
+  }
+  return null;
+}
+function aiEstDir(me,opps){
+  for(const d of ['N','S','W','E']){
+    const [dr,dc]=DIRS[d];
+    for(let s=1;s<=3;s++){
+      const o=opps.find(o=>o.r===me.r+dr*s&&o.c===me.c+dc*s);
+      if(o){if(aiPushKills(o,d))return d;break;}
+    }
+  }
+  return null;
+}
+function aiSafeCell(pi){
+  let best=null,bs=1e9;
+  for(let r=0;r<G.rows;r++)for(let c=0;c<COLS;c++){
+    if(aiCellHazard(r,c)||aiOccupied(r,c,pi))continue;
+    const sc=Math.abs(c-COLS/2)+Math.abs(r-(G.rows-1)/2);
+    if(sc<bs){bs=sc;best={r,c};}
+  }
+  return best;
+}
+function aiValidMoves(me,pi){
+  const out=[];
+  for(const k of ['mv','balzo']){
+    const dist=k==='balzo'?2:1;
+    for(const d of ['N','S','W','E']){
+      const [dr,dc]=DIRS[d];
+      const nr=me.r+dr*dist,nc=me.c+dc*dist;
+      if(aiCellHazard(nr,nc)||aiOccupied(nr,nc,pi))continue;
+      out.push({k,d,nr,nc});
+    }
+  }
+  return out;
+}
+function aiMove(me,opps,pi){
+  const moves=aiValidMoves(me,pi);
+  if(!moves.length)return null;
+  const opp=aiNearest(me,opps);
+  let item=null,bd=1e9;
+  for(const it of G.items){const d=Math.abs(it.r-me.r)+Math.abs(it.c-me.c);if(d<bd){bd=d;item=it;}}
+  let best=null,bs=-1e9;
+  for(const m of moves){
+    let s=Math.random()*0.6;
+    s-=Math.abs(m.nr-(G.rows-1)/2)*0.5;                                   // file centrali = più sicure
+    if(opp){const d=Math.abs(m.nr-opp.r)+Math.abs(m.nc-opp.c);s-=Math.abs(d-1)*0.8;} // resta accanto per spingere
+    if(item){const wi=me.items.length<2?1:0.4;s-=(Math.abs(m.nr-item.r)+Math.abs(m.nc-item.c))*0.25*wi;}
+    if(G.insp.col>=0)s-=Math.max(0,3-Math.abs(m.nc-G.insp.col))*0.4;      // tieniti lontano dal controllore
+    if(m.k==='balzo')s-=0.2;
+    if(s>bs){bs=s;best=m;}
+  }
+  return best?{k:best.k,d:best.d}:null;
+}
+function aiApplySim(me,act,pi){
+  if(!act)return;
+  if(act.k==='mv'||act.k==='balzo'){
+    const dist=act.k==='balzo'?2:1;const [dr,dc]=DIRS[act.d];
+    const nr=me.r+dr*dist,nc=me.c+dc*dist;
+    if(!aiOccupied(nr,nc,pi)){me.r=nr;me.c=nc;}
+  }else if(act.k==='item_tp'){me.r=act.r;me.c=act.c;}
+  const map={item_est:'est',item_ban:'ban',item_dyn:'dyn',item_tp:'tp'};
+  if(map[act.k]){const i=me.items.indexOf(map[act.k]);if(i>=0)me.items.splice(i,1);}
+}
+function aiPick(me,pi,s){
+  const opps=aiOpponents(pi);
+  if(!opps.length)return aiMove(me,opps,pi)||{k:'duck'};
+  // 1) tunnel in arrivo a questo passo → abbassati
+  if(G.event&&G.event.type==='tunnel'&&G.event.step===s+1&&Math.random()<.85)return {k:'duck'};
+  // 2) dinamite: arma rara e potente
+  if(me.items.includes('dyn')&&Math.random()<.8){const t=aiNearest(me,opps);if(t)return {k:'item_dyn',t:t.qi};}
+  // 3) estintore: getto letale a distanza
+  if(me.items.includes('est')){const d=aiEstDir(me,opps);if(d)return {k:'item_est',d};}
+  // 4) spintone letale su un vicino
+  const pd=aiPushDir(me,opps);if(pd)return {k:'spinta',d:pd};
+  // 5) teletrasporto se intrappolato (nessuna mossa sicura)
+  if(me.items.includes('tp')&&!aiValidMoves(me,pi).length){const dst=aiSafeCell(pi);if(dst)return {k:'item_tp',r:dst.r,c:dst.c};}
+  // 6) banana se un avversario è proprio vicino
+  if(me.items.includes('ban')&&opps.some(o=>Math.abs(o.r-me.r)+Math.abs(o.c-me.c)<=2)&&Math.random()<.3)return {k:'item_ban'};
+  // 7) muoviti in sicurezza, altrimenti abbassati
+  return aiMove(me,opps,pi)||{k:'duck'};
+}
+function aiProgram(pi){
+  const p=G.players[pi];
+  const me={r:p.r,c:p.c,items:p.items.slice()};
+  const prog=[];
+  for(let s=0;s<STEPS;s++){const act=aiPick(me,pi,s);prog.push(act);aiApplySim(me,act,pi);}
+  return sanitize(prog);
+}
+const AI_QUIPS=['sta calcolando le traiettorie…','consulta il manuale del clandestino…','scalda i circuiti…','trama qualcosa di losco…','analizza il tetto…'];
 async function collectPrograms(){
   G.programs=Array.from({length:G.n},()=>[]);
   if(G.mode==='local'){
     for(let k=0;k<G.n;k++){
       const pi=(G.initiative+k)%G.n;
       if(G.players[pi].dead)continue;
+      if(G.ai[pi]){
+        $('#progPanel').classList.add('hide');$('#execPanel').classList.add('hide');
+        setMsg(`🤖 ${G.names[pi]} ${AI_QUIPS[Math.floor(Math.random()*AI_QUIPS.length)]}`);
+        await sleep(700+Math.random()*600);
+        G.programs[pi]=aiProgram(pi);
+        continue;
+      }
       await showHandoff(pi);
       G.programs[pi]=await openProgrammer(pi,localCtx(pi));
     }
@@ -1614,10 +1751,12 @@ async function startManche(){
 }
 function startLocal(){
   G.mode='local';G.started=true;
-  G.names=[];G.emojis=[];
+  G.names=[];G.emojis=[];G.ai=[false,false,false,false];
   for(let i=0;i<G.n;i++){
     G.names.push($('#name'+i).value.trim()||DEF_NAMES[i]);
     G.emojis.push($('#emo'+i).value);
+    const ab=$('#ai'+i);
+    if(ab&&ab.classList.contains('cpu'))G.ai[i]=true;
   }
   try{localStorage.setItem('sb_names',JSON.stringify(G.names));}catch(e){}
   G.rows=G.n<3?3:(G.n===3?4:5);
@@ -1668,6 +1807,19 @@ document.querySelectorAll('#countBtns button').forEach(b=>{
     G.n=parseInt(b.dataset.n,10);
     $('#su2').classList.toggle('hide',G.n<3);
     $('#su3').classList.toggle('hide',G.n<4);
+  };
+});
+const AI_DEFNAMES={1:'Robotto',2:'Bullone',3:'Circuito'};
+document.querySelectorAll('.aiBtn').forEach(btn=>{
+  btn.onclick=()=>{
+    const i=parseInt(btn.dataset.i,10);
+    const on=!btn.classList.contains('cpu');
+    btn.classList.toggle('cpu',on);
+    btn.textContent=on?'🤖 CPU':'👤 Umano';
+    const inp=$('#name'+i);
+    if(on){inp.dataset.human=inp.value;inp.value=AI_DEFNAMES[i];}
+    else if(inp.dataset.human!==undefined){inp.value=inp.dataset.human;}
+    SYNTH.ui();
   };
 });
 </script>
