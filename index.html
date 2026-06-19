@@ -839,7 +839,11 @@ function renderLocal(instant){
     el.classList.toggle('ducking',!!p.ducking);
     el.querySelector('.emo').textContent=G.emojis[i];
     el.querySelector('.nameTag').textContent=G.names[i];
-    el.querySelector('.tin').style.opacity=p.gone?0:1;
+    const tin=el.querySelector('.tin');
+    // giocatore di nuovo vivo (nuova manche): togli l'animazione di caduta/cattura
+    // bloccata in opacità 0, altrimenti sul client il token resta invisibile.
+    if(!p.dead)tin.classList.remove('fallin','busted');
+    tin.style.opacity=p.gone?0:1;
     if(instant){void el.offsetWidth;el.style.transition='';}
   }
   const on=G.insp.col>=0&&G.insp.col<COLS;
