@@ -213,24 +213,17 @@ main{display:flex;flex-direction:column;align-items:center;padding:10px}
   display:flex;align-items:center;justify-content:center;font-size:60px;font-weight:900}
 #rulesBox{text-align:left;font-size:15px;line-height:1.55;max-height:60vh;overflow:auto;padding-right:6px}
 #rulesBox b{color:var(--amber)}
-/* ---- tutorial ---- */
-#tutCard{position:relative;max-width:540px}
-#tutEmoji{font-size:48px;line-height:1}
-#tutTitle{margin:0;font-size:24px;color:var(--amber)}
-#tutBody{font-size:16px;line-height:1.5;text-align:center;min-height:118px;display:flex;
-  flex-direction:column;gap:9px;justify-content:center;align-items:center}
-#tutBody b{color:var(--amber)}
-.tutBoard{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin:2px 0}
-.tutCell{width:30px;height:30px;border-radius:6px;background:var(--panel2);border:1px solid #3a4a5c;
-  display:flex;align-items:center;justify-content:center;font-size:16px}
-.tutCell.gap{background:#0a0e13;border-style:dashed;border-color:#43576b;font-size:13px}
-.tutCell.insp{background:#5a1d1d;border-color:var(--red)}
-.tutDots{display:flex;gap:7px;justify-content:center}
-.tutDot{width:9px;height:9px;border-radius:50%;background:#3a4a5c}
-.tutDot.on{background:var(--amber)}
-.tutNav{display:flex;gap:12px;width:100%;justify-content:space-between;align-items:center}
-.tutSkip{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--dim);
-  font-size:14px;text-decoration:underline;cursor:pointer}
+/* ---- tutorial in-game (barra guida) ---- */
+#coachBar{background:linear-gradient(180deg,#26384d,#1a2738);border:1px solid #44638c;border-radius:14px;
+  padding:11px 13px;margin:6px auto 2px;max-width:560px;display:flex;flex-direction:column;gap:9px;
+  box-shadow:0 6px 22px #0008}
+#coachBar .crow{display:flex;gap:10px;align-items:flex-start}
+#coachBar .cmascot{font-size:26px;line-height:1.2}
+#coachTxt{flex:1;text-align:left;font-size:15px;line-height:1.45;color:var(--ink)}
+#coachTxt b{color:var(--amber)}
+#coachBar .cbtns{display:flex;gap:12px;justify-content:flex-end;align-items:center}
+#coachSkip{background:none;border:none;color:var(--dim);font-size:13px;text-decoration:underline;cursor:pointer}
+#coachNext{padding:8px 20px;font-size:15px}
 #sndBtn{position:fixed;top:10px;right:10px;z-index:70;background:var(--panel2);font-size:18px;padding:8px 12px;border-radius:10px}
 </style>
 </head>
@@ -309,6 +302,10 @@ main{display:flex;flex-direction:column;align-items:center;padding:10px}
 
   <section id="scrGame" class="hide">
     <div id="topbar"><div id="tagsRow"></div><div id="midInfo"></div></div>
+    <div id="coachBar" class="hide">
+      <div class="crow"><span class="cmascot">🚂</span><div id="coachTxt"></div></div>
+      <div class="cbtns"><button id="coachSkip">Salta tutorial ✕</button><button class="bigbtn" id="coachNext">Avanti ▶</button></div>
+    </div>
     <div id="eventBanner"></div>
     <div id="boardWrap"><div id="board"></div></div>
     <div id="log">&nbsp;</div>
@@ -384,18 +381,6 @@ main{display:flex;flex-direction:column;align-items:center;padding:10px}
     <p class="sub">Patto d'onore in locale: niente sbirciate. Chi sbircia paga il caffè a prescindere. ☕</p>
   </div>
   <button class="bigbtn" id="rulesClose">Capito!</button>
-</div></div>
-
-<div id="ovTut" class="ov hide"><div class="ovCard" id="tutCard">
-  <button class="tutSkip" id="tutSkip">Salta ✕</button>
-  <div id="tutEmoji">🚂</div>
-  <h2 id="tutTitle"></h2>
-  <div id="tutBody"></div>
-  <div class="tutDots" id="tutDots"></div>
-  <div class="tutNav">
-    <button class="ghostbtn" id="tutPrev">← Indietro</button>
-    <button class="bigbtn" id="tutNext" style="font-size:17px;padding:12px 22px">Avanti →</button>
-  </div>
 </div></div>
 
 <div id="ovWelcome" class="ov hide"><div class="ovCard">
@@ -1836,52 +1821,126 @@ $('#btnOnlineBack').onclick=()=>location.reload();
 $('#btnRules').onclick=()=>$('#ovRules').classList.remove('hide');
 $('#rulesClose').onclick=()=>$('#ovRules').classList.add('hide');
 
-/* ---------- TUTORIAL ---------- */
-const TUT_STEPS=[
-  {emoji:'🎫',title:'L\'obiettivo',html:'Sei un passeggero <b>senza biglietto</b> sul tetto di un treno in corsa.<br>Resta l\'<b>ultimo in piedi</b> per vincere la manche. Il primo ad arrivare a <b>3 🎫 vince la partita!</b>'},
-  {emoji:'🗺️',title:'Il tetto del treno',html:
-    '<div class="tutBoard">'
-    +'<span class="tutCell">🤠</span><span class="tutCell"></span><span class="tutCell"></span>'
-    +'<span class="tutCell gap">buco</span>'
-    +'<span class="tutCell"></span><span class="tutCell"></span><span class="tutCell"></span>'
-    +'<span class="tutCell gap">buco</span>'
-    +'<span class="tutCell"></span><span class="tutCell"></span><span class="tutCell">🥷</span>'
-    +'</div>'
-    +'Tra un vagone e l\'altro ci sono dei <b>buchi</b> (caselle scure). <b>Cadi</b> se finisci in un buco, oltre i bordi o alle estremità del treno!'},
-  {emoji:'🧠',title:'Programma in segreto',html:'Ogni round scegli <b>4 azioni</b> di nascosto. Poi tutti le eseguono insieme, <b>un passo alla volta</b>.<br>⚡ Chi ha l\'<b>iniziativa</b> agisce per primo a ogni passo (si sorteggia e ruota).'},
-  {emoji:'🎮',title:'Le mosse',html:'⬆️⬇️⬅️➡️ <b>Passo</b> — muovi di 1 casella.<br>🦘 <b>Balzo</b> — voli di 2: l\'unico modo per <b>saltare i buchi</b>!<br>👐 <b>Spintone</b> — scaraventi via di 2 un rivale vicino.<br>🛡️ <b>Abbassati</b> — pari spintoni e tunnel.'},
-  {emoji:'🎒',title:'Oggetti sul tetto',html:'Passaci sopra per raccoglierli (zaino <b>max 2</b>).<br>🧯 Estintore · 🍌 Banana · ☂️ Ombrello · 🪪 Biglietto falso<br>E i rarissimi 🧨 <b>Dinamite</b> e 🌀 <b>Teletrasporto</b>!'},
-  {emoji:'👮',title:'Il controllore',html:
-    '<div class="tutBoard">'
-    +'<span class="tutCell"></span><span class="tutCell"></span><span class="tutCell insp">👮</span><span class="tutCell"></span><span class="tutCell">🤠</span>'
-    +'</div>'
-    +'Avanza di <b>2 colonne</b> a ogni round (la <b>zona rossa</b>) e salta i buchi. Finire nella <b>sua colonna</b> = multa = fuori dalla manche!'},
-  {emoji:'🌪️',title:'Imprevisti',html:'Prima di programmare viene annunciato un evento:<br>🕳️ <b>Tunnel</b> — chi non è abbassato salta l\'azione dopo.<br>🌀 <b>Curva</b> / 💥 <b>Scossone</b> — tutti scivolano di 1!'},
-  {emoji:'🤖',title:'Come potete giocare',html:'👥 <b>Stesso PC</b> — vi passate il dispositivo a turno.<br>🤖 <b>Contro la CPU</b> — nel setup tocca 👤→🤖 su un avversario.<br>🌐 <b>Online</b> — ognuno dal proprio telefono.'},
-  {emoji:'🚂',title:'Si parte!',html:'Programma con astuzia, butta giù i rivali… e <b>occhio a non cadere da solo!</b><br>Buon viaggio sul tetto. 🎫'}
-];
-let tutIdx=0;
-function renderTut(){
-  const s=TUT_STEPS[tutIdx];
-  $('#tutEmoji').textContent=s.emoji;
-  $('#tutTitle').textContent=s.title;
-  $('#tutBody').innerHTML=s.html;
-  $('#tutDots').innerHTML=TUT_STEPS.map((_,i)=>`<span class="tutDot${i===tutIdx?' on':''}"></span>`).join('');
-  $('#tutPrev').style.visibility=tutIdx===0?'hidden':'visible';
-  $('#tutNext').textContent=tutIdx===TUT_STEPS.length-1?'Gioca! 🚂':'Avanti →';
+/* ---------- TUTORIAL GIOCATO (sul tabellone vero) ---------- */
+let coachRes=null;
+function coachShow(html){ $('#coachTxt').innerHTML=html; $('#coachBar').classList.remove('hide'); $('#coachNext').classList.add('hide'); }
+function coachSay(html){
+  return new Promise(res=>{
+    $('#coachTxt').innerHTML=html; $('#coachBar').classList.remove('hide'); $('#coachNext').classList.remove('hide');
+    coachRes=()=>{coachRes=null;res();};
+  });
 }
-function openTutorial(){tutIdx=0;renderTut();$('#ovTut').classList.remove('hide');}
-function closeTutorial(){$('#ovTut').classList.add('hide');}
-$('#btnTut').onclick=()=>{SYNTH.ui();openTutorial();};
-$('#tutSkip').onclick=()=>{SYNTH.ui();closeTutorial();};
-$('#tutPrev').onclick=()=>{if(tutIdx>0){tutIdx--;SYNTH.ui();renderTut();}};
-$('#tutNext').onclick=()=>{
-  SYNTH.ui();
-  if(tutIdx<TUT_STEPS.length-1){tutIdx++;renderTut();}
-  else{closeTutorial();$('#scrMenu').classList.add('hide');$('#scrSetup').classList.remove('hide');}
-};
-$('#wcYes').onclick=()=>{SYNTH.ui();$('#ovWelcome').classList.add('hide');openTutorial();};
-$('#wcNo').onclick=()=>{SYNTH.ui();$('#ovWelcome').classList.add('hide');};
+$('#coachNext').onclick=()=>{ SYNTH.ui(); if(coachRes)coachRes(); };
+$('#coachSkip').onclick=()=>{ SYNTH.ui(); endTutorial(false); };
+function tutCtx(pi){return {stun:false,held:G.players[pi].items.slice(),hint:'🎓 Prova pratica: nessuno ti caccia davvero, sperimenta pure!'};}
+function dummyAlive(){return G.players[1]&&!G.players[1].dead;}
+function resetTut(o){
+  G.items=[]; G.traps=[]; renderItems();
+  const p=G.players[0];
+  p.r=o.pr; p.c=o.pc; p.ducking=false; p.stunned=false; p.dead=null; p.gone=false; p.items=o.keepItems?p.items:[]; p.prevSafe={r:o.pr,c:o.pc};
+  const d=G.players[1];
+  d.r=(o.dr!==undefined?o.dr:1); d.c=(o.dc!==undefined?o.dc:12);
+  d.dead=null; d.gone=false; d.ducking=false; d.stunned=false; d.items=[]; d.prevSafe={r:d.r,c:d.c};
+  if(o.items)for(const it of o.items)G.items.push({t:it.t,r:it.r,c:it.c});
+}
+async function tutExec(prog){
+  if(!prog||G.tutAbort)return {};
+  $('#progPanel').classList.add('hide');
+  for(let s=1;s<=STEPS;s++){
+    if(G.tutAbort)return {};
+    G.step=s;
+    const p=G.players[0];
+    p.ducking=false; render();
+    await doAction(0,prog[s-1]);
+    if(G.tutAbort)return {};
+    if(hazardAt(p)){
+      snd.faah(); shakeBoard(); deathFxLocal(0,'gap');
+      await sleep(900);
+      const tin=tokEls[0]&&tokEls[0].querySelector('.tin'); if(tin)tin.classList.remove('fallin');
+      rescueTo(p); p.dead=null; render(true);
+      return {fell:true};
+    }
+    if(dummyAlive()&&hazardAt(G.players[1])){
+      G.players[1].dead=hazardAt(G.players[1]);
+      await animateDeath(1);
+      return {pushedOff:true};
+    }
+    await sleep(220);
+  }
+  return {};
+}
+async function runTutorial(){
+  $('#ovWelcome').classList.add('hide');
+  G.tutorial=true; G.tutAbort=false; G.mode='local'; G.started=true; G.over=false;
+  G.n=2; G.rows=3;
+  G.names=['Tu','Manichino']; G.emojis=['🤠','🤖'];
+  G.scores=[0,0]; G.manche=1; G.round=1; G.initiative=0;
+  G.insp.col=-4; G.event=null; G.items=[]; G.traps=[];
+  G.players=[{r:1,c:1,items:[],dead:null,ducking:false,stunned:false,gone:false,prevSafe:{r:1,c:1}},
+             {r:1,c:12,items:[],dead:null,ducking:false,stunned:false,gone:false,prevSafe:{r:1,c:12}}];
+  buildBoard(); buildTokens(); fitBoard();
+  $('#scrMenu').classList.add('hide'); $('#scrSetup').classList.add('hide'); $('#scrOnline').classList.add('hide');
+  $('#progPanel').classList.add('hide'); $('#execPanel').classList.add('hide');
+  $('#scrGame').classList.remove('hide');
+  setBanner('🎓 TUTORIAL',false);
+  render(true); updateHud();
+
+  await coachSay('Benvenuto sul tetto del treno! 🚂 Sono la tua guida. Impari <b>giocando davvero</b>: muoverai il tuo omino 🤠 sul tabellone qui sopra. Premi <b>Avanti</b>.'); if(G.tutAbort)return;
+
+  /* Lezione 1 — muoversi e i buchi */
+  resetTut({pr:1,pc:1,dr:1,dc:12});
+  render(true);
+  coachShow('🎯 <b>Muoviti!</b> Nel pannello in basso programmi <b>4 azioni</b>. Usa le frecce ➡️⬅️⬆️⬇️ per camminare. ⚠️ Vedi il <b>buco</b> scuro? Se ci entri, cadi! Metti 4 azioni e premi <b>✅</b>.');
+  let prog=await openProgrammer(0,tutCtx(0)); if(G.tutAbort)return;
+  let res=await tutExec(prog); if(G.tutAbort)return;
+  if(res.fell)await coachSay('Ahia! 😅 Nei <b>buchi tra i vagoni</b> si cade. Ti ho rimesso su. Per superarli serve il <b>Balzo</b> 🦘 — proviamolo!');
+  else await coachSay('Perfetto, ti muovi sul tetto come un vero clandestino! 👏');
+  if(G.tutAbort)return;
+
+  /* Lezione 2 — Balzo sopra il buco per prendere un oggetto */
+  resetTut({pr:1,pc:3,dr:1,dc:12,items:[{t:'est',r:1,c:6}]});
+  render(true); renderItems();
+  coachShow('🦘 <b>Salta il buco!</b> Tra te e l\'🧯 <b>estintore</b> c\'è un buco. Un Passo ci cadrebbe: usa il <b>🦘 Balzo ➡️</b> (salta 2 caselle) e poi un <b>Passo ➡️</b> per raccoglierlo. Riempi le 4 azioni e conferma.');
+  prog=await openProgrammer(0,tutCtx(0)); if(G.tutAbort)return;
+  res=await tutExec(prog); if(G.tutAbort)return;
+  if(G.players[0].items.includes('est'))await coachSay('Grande! Balzo sul buco ✔ e <b>🧯 estintore raccolto</b>. Gli oggetti vanno nello <b>zaino</b> (max 2): ti tornano utili per fare scherzi ai rivali.');
+  else await coachSay('Tranquillo! Ricorda: il <b>🦘 Balzo</b> supera i buchi e ti porta sugli oggetti. Lo padroneggerai giocando. Avanti!');
+  if(G.tutAbort)return;
+
+  /* Lezione 3 — spintone letale */
+  resetTut({pr:1,pc:6,dr:1,dc:5});
+  render(true);
+  coachShow('👐 <b>Buttalo giù!</b> Il <b>Manichino 🤖</b> è alla tua sinistra, proprio sul bordo del buco. Programma uno <b>👐 Spintone verso ⬅️</b> (mettilo come <b>prima</b> azione!) per scaraventarlo nel vuoto.');
+  prog=await openProgrammer(0,tutCtx(0)); if(G.tutAbort)return;
+  res=await tutExec(prog); if(G.tutAbort)return;
+  if(res.pushedOff){ await bigToast('🎫 PUNTO!',1000); await coachSay('BOOM! 💥 L\'hai buttato giù: <b>ultimo in piedi = punto</b>. Il primo a 3 🎫 vince la partita!'); }
+  else await coachSay('Lo <b>Spintone</b> funziona se il rivale è <b>adiacente</b> nella direzione scelta e non è abbassato 🛡️. Lo riproverai sul campo!');
+  if(G.tutAbort)return;
+
+  /* Lezione 4 — il controllore (dimostrazione sul tabellone) */
+  resetTut({pr:1,pc:8,dr:1,dc:12});
+  G.insp.col=4; render(true);
+  await coachSay('Ultima cosa: il <b>👮 Controllore</b> è quella <b>colonna rossa</b>. Sale sul tetto e avanza di <b>2 colonne ogni round</b>, saltando i buchi. Se finisci nella sua colonna: <b>multa, fuori dalla manche!</b>'); if(G.tutAbort)return;
+
+  await coachSay('🎓 <b>Tutorial finito!</b> Sai muoverti, saltare i buchi 🦘, raccogliere oggetti 🎒 e buttare giù i rivali 👐. Scoprirai giocando gli eventi (🕳️ tunnel, 🌀 curve) e gli oggetti rari (🧨 🌀). Pronto a salire a bordo?'); if(G.tutAbort)return;
+  endTutorial(true);
+}
+function endTutorial(toSetup){
+  G.tutAbort=true; G.tutorial=false; G.started=false;
+  if(PROG){ const r=PROG.res; PROG=null; r(null); }
+  if(coachRes){ const c=coachRes; coachRes=null; c(); }
+  removePickLayer();
+  $('#dirPick').classList.add('hide');
+  $('#coachBar').classList.add('hide');
+  $('#progPanel').classList.add('hide'); $('#execPanel').classList.add('hide');
+  $('#scrGame').classList.add('hide');
+  setBanner('…',false);
+  if(toSetup){ $('#scrSetup').classList.remove('hide'); }
+  else { $('#scrMenu').classList.remove('hide'); }
+}
+$('#btnTut').onclick=()=>{ SYNTH.ui(); runTutorial(); };
+$('#wcYes').onclick=()=>{ SYNTH.ui(); runTutorial(); };
+$('#wcNo').onclick=()=>{ SYNTH.ui(); $('#ovWelcome').classList.add('hide'); };
 try{if(!localStorage.getItem('sb_seen')){$('#ovWelcome').classList.remove('hide');localStorage.setItem('sb_seen','1');}}catch(e){}
 
 $('#btnStart').onclick=startLocal;
