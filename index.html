@@ -213,6 +213,24 @@ main{display:flex;flex-direction:column;align-items:center;padding:10px}
   display:flex;align-items:center;justify-content:center;font-size:60px;font-weight:900}
 #rulesBox{text-align:left;font-size:15px;line-height:1.55;max-height:60vh;overflow:auto;padding-right:6px}
 #rulesBox b{color:var(--amber)}
+/* ---- tutorial ---- */
+#tutCard{position:relative;max-width:540px}
+#tutEmoji{font-size:48px;line-height:1}
+#tutTitle{margin:0;font-size:24px;color:var(--amber)}
+#tutBody{font-size:16px;line-height:1.5;text-align:center;min-height:118px;display:flex;
+  flex-direction:column;gap:9px;justify-content:center;align-items:center}
+#tutBody b{color:var(--amber)}
+.tutBoard{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin:2px 0}
+.tutCell{width:30px;height:30px;border-radius:6px;background:var(--panel2);border:1px solid #3a4a5c;
+  display:flex;align-items:center;justify-content:center;font-size:16px}
+.tutCell.gap{background:#0a0e13;border-style:dashed;border-color:#43576b;font-size:13px}
+.tutCell.insp{background:#5a1d1d;border-color:var(--red)}
+.tutDots{display:flex;gap:7px;justify-content:center}
+.tutDot{width:9px;height:9px;border-radius:50%;background:#3a4a5c}
+.tutDot.on{background:var(--amber)}
+.tutNav{display:flex;gap:12px;width:100%;justify-content:space-between;align-items:center}
+.tutSkip{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--dim);
+  font-size:14px;text-decoration:underline;cursor:pointer}
 #sndBtn{position:fixed;top:10px;right:10px;z-index:70;background:var(--panel2);font-size:18px;padding:8px 12px;border-radius:10px}
 </style>
 </head>
@@ -229,6 +247,7 @@ main{display:flex;flex-direction:column;align-items:center;padding:10px}
     Oggetti sul tetto: 🧯 🍌 ☂️ 🪪 e i rarissimi 🧨 🌀</p>
     <button class="bigbtn" id="btnPlay">🎮 GIOCA QUI <small>(stesso PC)</small></button>
     <button class="bigbtn" id="btnOnline" style="background:linear-gradient(180deg,#6fb6ff,#2f7dd1);color:#06192e;box-shadow:0 5px 0 #1c4d85">🌐 GIOCA ONLINE</button>
+    <button class="ghostbtn" id="btnTut">📚 Tutorial</button>
     <button class="ghostbtn" id="btnRules">📜 Come si gioca</button>
     <p class="note">2–4 giocatori · hot-seat oppure online · ~10 minuti · perfetto in treno</p>
   </section>
@@ -365,6 +384,26 @@ main{display:flex;flex-direction:column;align-items:center;padding:10px}
     <p class="sub">Patto d'onore in locale: niente sbirciate. Chi sbircia paga il caffè a prescindere. ☕</p>
   </div>
   <button class="bigbtn" id="rulesClose">Capito!</button>
+</div></div>
+
+<div id="ovTut" class="ov hide"><div class="ovCard" id="tutCard">
+  <button class="tutSkip" id="tutSkip">Salta ✕</button>
+  <div id="tutEmoji">🚂</div>
+  <h2 id="tutTitle"></h2>
+  <div id="tutBody"></div>
+  <div class="tutDots" id="tutDots"></div>
+  <div class="tutNav">
+    <button class="ghostbtn" id="tutPrev">← Indietro</button>
+    <button class="bigbtn" id="tutNext" style="font-size:17px;padding:12px 22px">Avanti →</button>
+  </div>
+</div></div>
+
+<div id="ovWelcome" class="ov hide"><div class="ovCard">
+  <div style="font-size:46px">🚂🎫</div>
+  <h2>Benvenuto!</h2>
+  <p>Prima volta sul tetto del treno? C'è un <b>tutorial veloce</b> (1 minuto) che ti spiega come si gioca.</p>
+  <button class="bigbtn" id="wcYes">📚 Sì, mostrami come si gioca</button>
+  <button class="ghostbtn" id="wcNo">No grazie, gioco subito</button>
 </div></div>
 
 <div id="toast" class="hide"><div id="toastTxt"></div></div>
@@ -1796,6 +1835,55 @@ $('#btnSetupBack').onclick=()=>{$('#scrSetup').classList.add('hide');$('#scrMenu
 $('#btnOnlineBack').onclick=()=>location.reload();
 $('#btnRules').onclick=()=>$('#ovRules').classList.remove('hide');
 $('#rulesClose').onclick=()=>$('#ovRules').classList.add('hide');
+
+/* ---------- TUTORIAL ---------- */
+const TUT_STEPS=[
+  {emoji:'🎫',title:'L\'obiettivo',html:'Sei un passeggero <b>senza biglietto</b> sul tetto di un treno in corsa.<br>Resta l\'<b>ultimo in piedi</b> per vincere la manche. Il primo ad arrivare a <b>3 🎫 vince la partita!</b>'},
+  {emoji:'🗺️',title:'Il tetto del treno',html:
+    '<div class="tutBoard">'
+    +'<span class="tutCell">🤠</span><span class="tutCell"></span><span class="tutCell"></span>'
+    +'<span class="tutCell gap">buco</span>'
+    +'<span class="tutCell"></span><span class="tutCell"></span><span class="tutCell"></span>'
+    +'<span class="tutCell gap">buco</span>'
+    +'<span class="tutCell"></span><span class="tutCell"></span><span class="tutCell">🥷</span>'
+    +'</div>'
+    +'Tra un vagone e l\'altro ci sono dei <b>buchi</b> (caselle scure). <b>Cadi</b> se finisci in un buco, oltre i bordi o alle estremità del treno!'},
+  {emoji:'🧠',title:'Programma in segreto',html:'Ogni round scegli <b>4 azioni</b> di nascosto. Poi tutti le eseguono insieme, <b>un passo alla volta</b>.<br>⚡ Chi ha l\'<b>iniziativa</b> agisce per primo a ogni passo (si sorteggia e ruota).'},
+  {emoji:'🎮',title:'Le mosse',html:'⬆️⬇️⬅️➡️ <b>Passo</b> — muovi di 1 casella.<br>🦘 <b>Balzo</b> — voli di 2: l\'unico modo per <b>saltare i buchi</b>!<br>👐 <b>Spintone</b> — scaraventi via di 2 un rivale vicino.<br>🛡️ <b>Abbassati</b> — pari spintoni e tunnel.'},
+  {emoji:'🎒',title:'Oggetti sul tetto',html:'Passaci sopra per raccoglierli (zaino <b>max 2</b>).<br>🧯 Estintore · 🍌 Banana · ☂️ Ombrello · 🪪 Biglietto falso<br>E i rarissimi 🧨 <b>Dinamite</b> e 🌀 <b>Teletrasporto</b>!'},
+  {emoji:'👮',title:'Il controllore',html:
+    '<div class="tutBoard">'
+    +'<span class="tutCell"></span><span class="tutCell"></span><span class="tutCell insp">👮</span><span class="tutCell"></span><span class="tutCell">🤠</span>'
+    +'</div>'
+    +'Avanza di <b>2 colonne</b> a ogni round (la <b>zona rossa</b>) e salta i buchi. Finire nella <b>sua colonna</b> = multa = fuori dalla manche!'},
+  {emoji:'🌪️',title:'Imprevisti',html:'Prima di programmare viene annunciato un evento:<br>🕳️ <b>Tunnel</b> — chi non è abbassato salta l\'azione dopo.<br>🌀 <b>Curva</b> / 💥 <b>Scossone</b> — tutti scivolano di 1!'},
+  {emoji:'🤖',title:'Come potete giocare',html:'👥 <b>Stesso PC</b> — vi passate il dispositivo a turno.<br>🤖 <b>Contro la CPU</b> — nel setup tocca 👤→🤖 su un avversario.<br>🌐 <b>Online</b> — ognuno dal proprio telefono.'},
+  {emoji:'🚂',title:'Si parte!',html:'Programma con astuzia, butta giù i rivali… e <b>occhio a non cadere da solo!</b><br>Buon viaggio sul tetto. 🎫'}
+];
+let tutIdx=0;
+function renderTut(){
+  const s=TUT_STEPS[tutIdx];
+  $('#tutEmoji').textContent=s.emoji;
+  $('#tutTitle').textContent=s.title;
+  $('#tutBody').innerHTML=s.html;
+  $('#tutDots').innerHTML=TUT_STEPS.map((_,i)=>`<span class="tutDot${i===tutIdx?' on':''}"></span>`).join('');
+  $('#tutPrev').style.visibility=tutIdx===0?'hidden':'visible';
+  $('#tutNext').textContent=tutIdx===TUT_STEPS.length-1?'Gioca! 🚂':'Avanti →';
+}
+function openTutorial(){tutIdx=0;renderTut();$('#ovTut').classList.remove('hide');}
+function closeTutorial(){$('#ovTut').classList.add('hide');}
+$('#btnTut').onclick=()=>{SYNTH.ui();openTutorial();};
+$('#tutSkip').onclick=()=>{SYNTH.ui();closeTutorial();};
+$('#tutPrev').onclick=()=>{if(tutIdx>0){tutIdx--;SYNTH.ui();renderTut();}};
+$('#tutNext').onclick=()=>{
+  SYNTH.ui();
+  if(tutIdx<TUT_STEPS.length-1){tutIdx++;renderTut();}
+  else{closeTutorial();$('#scrMenu').classList.add('hide');$('#scrSetup').classList.remove('hide');}
+};
+$('#wcYes').onclick=()=>{SYNTH.ui();$('#ovWelcome').classList.add('hide');openTutorial();};
+$('#wcNo').onclick=()=>{SYNTH.ui();$('#ovWelcome').classList.add('hide');};
+try{if(!localStorage.getItem('sb_seen')){$('#ovWelcome').classList.remove('hide');localStorage.setItem('sb_seen','1');}}catch(e){}
+
 $('#btnStart').onclick=startLocal;
 $('#btnHost').onclick=()=>{try{localStorage.setItem('sb_onname',myOnName());}catch(e){};createRoom();};
 $('#btnJoin').onclick=()=>{try{localStorage.setItem('sb_onname',myOnName());}catch(e){};joinRoom();};
